@@ -1,0 +1,34 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_password123"
+    ports:
+      - "1433:1433"
+    volumes:
+      - leavedesk-sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=LeaveDesk;User Id=sa;Password=Your_password123;TrustServerCertificate=True;"
+      Jwt__Issuer: "LeaveDesk.Api"
+      Jwt__Audience: "LeaveDesk.Clients"
+      Jwt__SigningKey: "dev-only-signing-key-change-me-0123456789"
+      Jwt__ExpiryMinutes: "60"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+volumes:
+  leavedesk-sqldata:
